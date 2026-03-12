@@ -11,20 +11,19 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Set up JDK and Maven
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: '21'
-          # 启用 Maven 依赖缓存，以提高构建速度
-          cache: 'maven'
+          distribution: temurin
+          java-version: 21
+          cache: maven
 
       - name: Build executable
-        shell: powershell
+        shell: bash
         run: |
           bash bin/release-windows.sh
           bash bin/release-linux.sh
@@ -35,7 +34,8 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          # 表示要上传到 Release 的产出文件。这可能是单个路径或以逗号分隔的路径列表（或 globs）
-          artifacts: "dist/*"
-          token: ${{ secrets.GITHUB_TOKEN  }}
-          body: "My custom release"
+          artifacts: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: "Release ${{ github.ref_name }}"
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          allowUpdates: true
