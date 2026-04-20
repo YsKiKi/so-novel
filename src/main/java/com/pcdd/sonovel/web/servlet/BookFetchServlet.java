@@ -14,6 +14,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Set;
 
 public class BookFetchServlet extends HttpServlet {
@@ -56,13 +59,13 @@ public class BookFetchServlet extends HttpServlet {
                     .url(bookUrl)
                     .build();
 
-            downloadFileToServer(sr, format, language, concurrency);
+            downloadFileToServer(resp, sr, format, language, concurrency);
         } catch (Exception e) {
             RespUtils.writeError(resp, 500, "下载失败: " + e.getMessage());
         }
     }
 
-    private void downloadFileToServer(SearchResult sr, String format, String language, Integer concurrency) {
+    private void downloadFileToServer(HttpServletResponse resp, SearchResult sr, String format, String language, Integer concurrency) {
         AppConfig cfg = BeanUtil.copyProperties(AppConfigLoader.APP_CONFIG, AppConfig.class);
         cfg.setSourceId(sr.getSourceId());
 
@@ -76,8 +79,40 @@ public class BookFetchServlet extends HttpServlet {
             cfg.setConcurrency(concurrency);
         }
 
+        File dir = new File(cfg.getDownloadPath());
+        long beforeTimestamp = 0;
+        File[] filesBefore = dir.listFiles(File::isFile);
+        if (filesBefore != null) {
+            beforeTimestamp = Arrays.stream(filesBefore)
+                    .mapToLong(File::lastModified)
+                    .max()
+                    .orElse(0);
+        }
+
         Console.log("<== 正在获取章节目录...");
-        new Crawler(cfg).crawl(sr.getUrl());
+        double elapsed = new Crawler(cfg).crawl(sr.getUrl());
+
+        if (elapsed <= 0) {
+            RespUtils.writeError(resp, 500, "下载失败: 目录为空，中止下载");
+            return;
+        }
+
+        File[] filesAfter = dir.listFiles(File::isFile);
+        String newFileName = null;
+        if (filesAfter != null) {
+            long finalBeforeTimestamp = beforeTimestamp;
+            newFileName = Arrays.stream(filesAfter)
+                    .filter(f -> f.lastModified() > finalBeforeTimestamp)
+                    .max(Comparator.comparingLong(File::lastModified))
+                    .map(File::getName)
+                    .orElse(null);
+        }
+
+        if (newFileName != null) {
+            RespUtils.writeJson(resp, newFileName);
+        } else {
+            RespUtils.writeError(resp, 500, "下载完成但未找到生成的文件");
+        }
     }
 
 }

@@ -293,10 +293,16 @@
         params.set('concurrency', settingConcurrency.value)
       }
       try {
-        await fetch(`/book-fetch?${params.toString()}`)
+        const resp = await fetch(`/book-fetch?${params.toString()}`)
+        const result = await resp.json()
+        if (!resp.ok || result.code !== 200) {
+          updateTip(result.message || '下载失败')
+          await new Promise(r => setTimeout(r, 2000))
+          return
+        }
+        const filename = result.data
         await fetchLocalBooks()
-        // fetch 会把响应当成 XHR 请求，返回一个 Response 对象，不会走浏览器默认的下载流程
-        window.location.href = `/book-download?filename=${latestFileName}`
+        window.location.href = `/book-download?filename=${encodeURIComponent(filename)}`
       } catch (error) {
         console.error('Error downloading file to server:', error)
         updateTip('下载失败')

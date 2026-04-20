@@ -15,6 +15,7 @@ public class LocalBookListServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        resp.setHeader("Cache-Control", "no-store");
         File dir = new File(AppConfigLoader.APP_CONFIG.getDownloadPath());
         File[] files = dir.listFiles(File::isFile);
 

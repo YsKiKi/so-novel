@@ -40,6 +40,7 @@ public class BookDownloadServlet extends HttpServlet {
         }
 
         resp.setContentType("application/octet-stream");
+        resp.setHeader("Cache-Control", "no-store");
         resp.setHeader("Content-Disposition", "attachment;filename=" + URLUtil.encode(filename));
         resp.setHeader("Content-Length", String.valueOf(file.length()));
 
